@@ -153,7 +153,7 @@ internal class AcmeCertificateFactory
         return true;
     }
 
-    public async Task<X509Certificate2> CreateCertificateAsync(CancellationToken cancellationToken)
+    public async Task<X509Certificate2> CreateCertificateAsync(string[] domainNames, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_client == null)
@@ -165,7 +165,7 @@ internal class AcmeCertificateFactory
         var orders = await _client.GetOrdersAsync();
         if (orders.Any())
         {
-            var expectedDomains = new HashSet<string>(_options.Value.DomainNames);
+            var expectedDomains = new HashSet<string>(domainNames);
             foreach (var order in orders)
             {
                 var orderDetails = await _client.GetOrderDetailsAsync(order);
@@ -191,7 +191,7 @@ internal class AcmeCertificateFactory
         if (orderContext == null)
         {
             _logger.LogDebug("Creating new order for a certificate");
-            orderContext = await _client.CreateOrderAsync(_options.Value.DomainNames);
+            orderContext = await _client.CreateOrderAsync(domainNames);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -201,7 +201,7 @@ internal class AcmeCertificateFactory
         await Task.WhenAll(BeginValidateAllAuthorizations(authorizations, cancellationToken));
 
         cancellationToken.ThrowIfCancellationRequested();
-        return await CompleteCertificateRequestAsync(orderContext, cancellationToken);
+        return await CompleteCertificateRequestAsync(orderContext, domainNames, cancellationToken);
     }
 
     private IEnumerable<Task> BeginValidateAllAuthorizations(IEnumerable<IAuthorizationContext> authorizations,
@@ -282,7 +282,7 @@ internal class AcmeCertificateFactory
         throw new InvalidOperationException($"Failed to validate ownership of domainName '{domainName}'");
     }
 
-    private async Task<X509Certificate2> CompleteCertificateRequestAsync(IOrderContext order,
+    private async Task<X509Certificate2> CompleteCertificateRequestAsync(IOrderContext order, string[] domainNames,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -291,7 +291,7 @@ internal class AcmeCertificateFactory
             throw new InvalidOperationException();
         }
 
-        var commonName = _options.Value.DomainNames[0];
+        var commonName = domainNames[0];
         _logger.LogDebug("Creating cert for {commonName}", commonName);
 
         var csrInfo = new CsrInfo
@@ -305,7 +305,7 @@ internal class AcmeCertificateFactory
         _logger.LogAcmeAction("NewCertificate");
 
         var pfxBuilder = CreatePfxBuilder(acmeCert, privateKey);
-        var pfx = pfxBuilder.Build("HTTPS Cert - " + _options.Value.DomainNames, string.Empty);
+        var pfx = pfxBuilder.Build("HTTPS Cert - " + domainNames, string.Empty);
         return new X509Certificate2(pfx, string.Empty, X509KeyStorageFlags.Exportable);
     }
 

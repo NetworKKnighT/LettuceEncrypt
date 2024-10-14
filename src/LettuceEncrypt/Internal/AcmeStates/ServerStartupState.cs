@@ -10,30 +10,39 @@ internal class ServerStartupState : SyncAcmeState
 {
     private readonly IOptions<LettuceEncryptOptions> _options;
     private readonly CertificateSelector _selector;
+    private readonly DomainNamesEnumerator _domainNamesEnumerator;
     private readonly ILogger<ServerStartupState> _logger;
 
     public ServerStartupState(
         AcmeStateMachineContext context,
         IOptions<LettuceEncryptOptions> options,
         CertificateSelector selector,
+        DomainNamesEnumerator domainNamesEnumerator,
         ILogger<ServerStartupState> logger) :
         base(context)
     {
         _options = options;
         _selector = selector;
+        _domainNamesEnumerator = domainNamesEnumerator;
         _logger = logger;
     }
 
     public override IAcmeState MoveNext()
     {
-        var domainNames = _options.Value.DomainNames;
-        var hasCertForAllDomains = domainNames.All(_selector.HasCertForDomain);
-        if (hasCertForAllDomains)
+        while (_domainNamesEnumerator.MoveNext())
         {
-            _logger.LogDebug("Certificate for {domainNames} already found.", domainNames);
-            return MoveTo<CheckForRenewalState>();
+            var domainNames = _domainNamesEnumerator.Current;
+            var hasCertForAllDomains = domainNames.All(_selector.HasCertForDomain);
+            if (hasCertForAllDomains)
+            {
+                _logger.LogDebug("Certificate for [{domainNames}] already found.", string.Join(", ", domainNames));
+                return MoveTo<CheckForRenewalState>();
+            }
+
+            return MoveTo<BeginCertificateCreationState>();
         }
 
-        return MoveTo<BeginCertificateCreationState>();
+        _domainNamesEnumerator.Reset();
+        return MoveTo<WaitState>();
     }
 }

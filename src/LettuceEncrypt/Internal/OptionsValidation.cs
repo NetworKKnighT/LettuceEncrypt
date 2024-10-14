@@ -13,7 +13,7 @@ internal class OptionsValidation : IValidateOptions<LettuceEncryptOptions>
         if (options.AllowedChallengeTypes == ChallengeType.Dns01)
             return ValidateOptionsResult.Success;
 
-        foreach (var dnsName in options.DomainNames)
+        foreach (var dnsName in options.DomainNames.SelectMany(domainName => domainName))
         {
             if (dnsName.Contains('*'))
             {

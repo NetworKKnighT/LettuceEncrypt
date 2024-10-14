@@ -25,7 +25,7 @@ internal class X509CertStore : ICertificateSource, ICertificateRepository, IDisp
 
     public Task<IEnumerable<X509Certificate2>> GetCertificatesAsync(CancellationToken cancellationToken)
     {
-        var domainNames = new HashSet<string>(_options.Value.DomainNames);
+        var domainNames = new HashSet<string>(_options.Value.DomainNames.SelectMany(domainName => domainName));
         var result = new List<X509Certificate2>();
         var certs = _store.Certificates.Find(X509FindType.FindByTimeValid,
             DateTime.Now,

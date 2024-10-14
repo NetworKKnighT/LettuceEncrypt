@@ -78,6 +78,7 @@ public static class LettuceEncryptServiceCollectionExtensions
 
         // The state machine should run in its own scope
         services.AddScoped<AcmeStateMachineContext>();
+        services.AddScoped<DomainNamesEnumerator>();
 
         services.AddSingleton(TerminalState.Singleton);
 
@@ -85,7 +86,8 @@ public static class LettuceEncryptServiceCollectionExtensions
         services
             .AddTransient<ServerStartupState>()
             .AddTransient<CheckForRenewalState>()
-            .AddTransient<BeginCertificateCreationState>();
+            .AddTransient<BeginCertificateCreationState>()
+            .AddTransient<WaitState>();
 
         // PfxBuilderFactory is stateless, so there's no need for a transient registration
         services.AddSingleton<IPfxBuilderFactory, PfxBuilderFactory>();

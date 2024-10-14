@@ -71,14 +71,14 @@ public class AzureKeyVaultTests
         certClientFactory.Setup(c => c.Create()).Returns(certClient.Object);
         var options = Options.Create(new LettuceEncryptOptions());
 
-        options.Value.DomainNames = new[] { Domain1, Domain2 };
+        options.Value.DomainNames = new[] { new[] { Domain1, Domain2 } };
 
         var repository = new AzureKeyVaultCertificateRepository(
             certClientFactory.Object,
             Mock.Of<ISecretClientFactory>(),
             options,
             NullLogger<AzureKeyVaultCertificateRepository>.Instance);
-        foreach (var domain in options.Value.DomainNames)
+        foreach (var domain in options.Value.DomainNames.First())
         {
             var certificateToSave = TestUtils.CreateTestCert(domain);
             await repository.SaveAsync(certificateToSave, CancellationToken.None);
@@ -101,7 +101,7 @@ public class AzureKeyVaultTests
         secretClientFactory.Setup(c => c.Create()).Returns(secretClient.Object);
         var options = Options.Create(new LettuceEncryptOptions());
 
-        options.Value.DomainNames = new[] { Domain1, Domain2 };
+        options.Value.DomainNames = new[] { new[] { Domain1, Domain2 } };
 
         var repository = new AzureKeyVaultCertificateRepository(
             Mock.Of<ICertificateClientFactory>(),
