@@ -52,7 +52,7 @@ LettuceEncrypt.LettuceEncryptOptions.AdditionalIssuers.get -> string![]!
 LettuceEncrypt.LettuceEncryptOptions.AdditionalIssuers.set -> void
 LettuceEncrypt.LettuceEncryptOptions.AllowedChallengeTypes.get -> LettuceEncrypt.Acme.ChallengeType
 LettuceEncrypt.LettuceEncryptOptions.AllowedChallengeTypes.set -> void
-LettuceEncrypt.LettuceEncryptOptions.DomainNames.get -> string![]!
+LettuceEncrypt.LettuceEncryptOptions.DomainNames.get -> string![]![]!
 LettuceEncrypt.LettuceEncryptOptions.DomainNames.set -> void
 LettuceEncrypt.LettuceEncryptOptions.EabCredentials.get -> LettuceEncrypt.Acme.EabCredentials!
 LettuceEncrypt.LettuceEncryptOptions.EabCredentials.set -> void

@@ -9,28 +9,31 @@ namespace LettuceEncrypt.Internal.AcmeStates;
 
 internal class BeginCertificateCreationState : AcmeState
 {
-    private readonly ILogger<ServerStartupState> _logger;
+    private readonly ILogger<BeginCertificateCreationState> _logger;
     private readonly IOptions<LettuceEncryptOptions> _options;
     private readonly AcmeCertificateFactory _acmeCertificateFactory;
     private readonly CertificateSelector _selector;
+    private readonly DomainNamesEnumerator _domainNamesEnumerator;
     private readonly IEnumerable<ICertificateRepository> _certificateRepositories;
 
     public BeginCertificateCreationState(
-        AcmeStateMachineContext context, ILogger<ServerStartupState> logger,
+        AcmeStateMachineContext context, ILogger<BeginCertificateCreationState> logger,
         IOptions<LettuceEncryptOptions> options, AcmeCertificateFactory acmeCertificateFactory,
-        CertificateSelector selector, IEnumerable<ICertificateRepository> certificateRepositories)
+        CertificateSelector selector, DomainNamesEnumerator domainNamesEnumerator,
+        IEnumerable<ICertificateRepository> certificateRepositories)
         : base(context)
     {
         _logger = logger;
         _options = options;
         _acmeCertificateFactory = acmeCertificateFactory;
         _selector = selector;
+        _domainNamesEnumerator = domainNamesEnumerator;
         _certificateRepositories = certificateRepositories;
     }
 
     public override async Task<IAcmeState> MoveNextAsync(CancellationToken cancellationToken)
     {
-        var domainNames = _options.Value.DomainNames;
+        var domainNames = _domainNamesEnumerator.Current;
 
         try
         {
@@ -40,7 +43,7 @@ internal class BeginCertificateCreationState : AcmeState
             _logger.LogInformation("Creating certificate for {hostname}",
                 string.Join(",", domainNames));
 
-            var cert = await _acmeCertificateFactory.CreateCertificateAsync(cancellationToken);
+            var cert = await _acmeCertificateFactory.CreateCertificateAsync(domainNames, cancellationToken);
 
             _logger.LogInformation("Created certificate {subjectName} ({thumbprint})",
                 cert.Subject,
@@ -50,7 +53,7 @@ internal class BeginCertificateCreationState : AcmeState
         }
         catch (Exception ex)
         {
-            _logger.LogError(0, ex, "Failed to automatically create a certificate for {hostname}", domainNames);
+            _logger.LogError(0, ex, "Failed to automatically create a certificate for {hostname}", string.Join(", ", domainNames));
             throw;
         }
 
@@ -61,17 +64,18 @@ internal class BeginCertificateCreationState : AcmeState
     {
         _selector.Add(cert);
 
-        var saveTasks = new List<Task>
-        {
-            Task.Delay(TimeSpan.FromMinutes(5), cancellationToken)
-        };
+        var saveTasks = new List<Task>();
+
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linkedCts.CancelAfter(TimeSpan.FromMinutes(5));
+        var linkedToken = linkedCts.Token;
 
         var errors = new List<Exception>();
         foreach (var repo in _certificateRepositories)
         {
             try
             {
-                saveTasks.Add(repo.SaveAsync(cert, cancellationToken));
+                saveTasks.Add(repo.SaveAsync(cert, linkedToken));
             }
             catch (Exception ex)
             {
@@ -80,7 +84,14 @@ internal class BeginCertificateCreationState : AcmeState
             }
         }
 
-        await Task.WhenAll(saveTasks);
+        try
+        {
+            await Task.WhenAll(saveTasks);
+        }
+        catch (TaskCanceledException e)
+        {
+            errors.Add(e);
+        }
 
         if (errors.Count > 0)
         {

@@ -91,6 +91,8 @@ internal class AcmeCertificateLoader : BackgroundService
     }
 
     private bool LettuceEncryptDomainNamesWereConfigured()
-        => _options.Value.DomainNames
-            .Any(w => !string.Equals("localhost", w, StringComparison.OrdinalIgnoreCase));
+    {
+        return _options.Value.DomainNames.All(domains =>
+                    domains.Any(w => !string.Equals("localhost", w, StringComparison.OrdinalIgnoreCase)));
+    }
 }

@@ -34,7 +34,7 @@ internal class AzureKeyVaultCertificateRepository : ICertificateRepository, ICer
     {
         var certs = new List<X509Certificate2>();
 
-        foreach (var domain in _encryptOptions.Value.DomainNames)
+        foreach (var domain in _encryptOptions.Value.DomainNames.SelectMany(domainName => domainName))
         {
             var cert = await GetCertificateWithPrivateKeyAsync(domain, cancellationToken);
 
