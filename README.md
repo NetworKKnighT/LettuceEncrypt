@@ -75,7 +75,9 @@ A few required options should be set, typically via the appsettings.json file.
         "AcceptTermsOfService": true,
 
         // You must specify at least one domain name
-        "DomainNames": [ "example.com", "www.example.com" ],
+        "DomainNames": [
+            [ "example.com", "www.example.com" ]
+        ],
 
         // You must specify an email address to register with the certificate authority
         "EmailAddress": "it-admin@example.com"
